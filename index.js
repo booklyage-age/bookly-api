@@ -23,8 +23,8 @@ app.get("/", (req, res) => {
   res.send("🚀 API Stripe + Supabase no ar!");
 });
 
-// ✅ Middleware para JSON (rotas normais)
-app.use(express.json());
+// ✅ JSON só para as rotas normais
+app.use("/api", express.json());
 
 // 🔹 Criar sessão de checkout (com trial de 14 dias)
 app.post("/api/create-checkout-session", async (req, res) => {
@@ -61,7 +61,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
   }
 });
 
-// ⚡ Webhook da Stripe
+// ⚡ Webhook da Stripe (NÃO usa express.json)
 app.post(
   "/webhook",
   bodyParser.raw({ type: "application/json" }),
