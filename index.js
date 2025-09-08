@@ -1,8 +1,8 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const Stripe = require("stripe");
-const bodyParser = require("body-parser");
-const { createClient } = require("@supabase/supabase-js");
+import express from "express";
+import dotenv from "dotenv";
+import Stripe from "stripe";
+import bodyParser from "body-parser";
+import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 const app = express();
