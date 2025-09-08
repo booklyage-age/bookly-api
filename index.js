@@ -16,17 +16,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// função util para converter timestamps unix → ISO
 const safeDate = (ts) => (ts ? new Date(ts * 1000).toISOString() : null);
 
-// 🚀 rota de teste
+// 🚀 rota teste
 app.get("/", (req, res) => {
   res.send("🚀 API Stripe + Supabase no ar!");
 });
 
-// ✅ JSON só para as rotas normais
+// ✅ JSON apenas para rotas normais
 app.use("/api", express.json());
 
-// 🔹 Criar sessão de checkout (com trial de 14 dias)
+// 🔹 Criar sessão de checkout (trial 14 dias)
 app.post("/api/create-checkout-session", async (req, res) => {
   try {
     const { email, user_id } = req.body;
@@ -61,7 +62,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
   }
 });
 
-// ⚡ Webhook da Stripe (NÃO usa express.json)
+// ⚡ Webhook da Stripe (não usa express.json)
 app.post(
   "/webhook",
   bodyParser.raw({ type: "application/json" }),
@@ -85,13 +86,49 @@ app.post(
       const session = event.data.object;
 
       if (session.mode === "subscription") {
-        const subscription = await stripe.subscriptions.retrieve(
-          session.subscription
-        );
+        try {
+          const subscription = await stripe.subscriptions.retrieve(
+            session.subscription
+          );
 
+          // 🔹 salvar apenas dados básicos (sem periodos, que ainda estão NULL)
+          const { error } = await supabase.from("subscriptions").upsert(
+            {
+              user_id: session.metadata.user_id || subscription.metadata?.user_id,
+              stripe_customer_id: subscription.customer,
+              stripe_subscription_id: subscription.id,
+              stripe_price_id: subscription.items.data[0].price.id,
+              status: subscription.status,
+              trial_start: safeDate(subscription.trial_start),
+              trial_end: safeDate(subscription.trial_end),
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id" }
+          );
+
+          if (error) {
+            console.error("❌ Erro ao salvar subscrição (checkout):", error);
+          } else {
+            console.log("✅ Subscrição inicial salva:", subscription.id);
+          }
+        } catch (err) {
+          console.error("❌ Erro ao processar checkout.session.completed:", err.message);
+        }
+      }
+    }
+
+    // 👉 subscription criada/atualizada/cancelada
+    if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated" ||
+      event.type === "customer.subscription.deleted"
+    ) {
+      const subscription = event.data.object;
+
+      try {
         const { error } = await supabase.from("subscriptions").upsert(
           {
-            user_id: session.metadata.user_id || subscription.metadata?.user_id,
+            user_id: subscription.metadata?.user_id,
             stripe_customer_id: subscription.customer,
             stripe_subscription_id: subscription.id,
             stripe_price_id: subscription.items.data[0].price.id,
@@ -108,43 +145,12 @@ app.post(
         );
 
         if (error) {
-          console.error("❌ Erro ao salvar subscrição (checkout):", error);
+          console.error("❌ Erro ao atualizar subscrição:", error);
         } else {
-          console.log("✅ Subscrição criada/atualizada via checkout:", subscription.id);
+          console.log("✅ Subscrição atualizada:", subscription.id);
         }
-      }
-    }
-
-    // 👉 subscription criada/atualizada/cancelada
-    if (
-      event.type === "customer.subscription.created" ||
-      event.type === "customer.subscription.updated" ||
-      event.type === "customer.subscription.deleted"
-    ) {
-      const subscription = event.data.object;
-
-      const { error } = await supabase.from("subscriptions").upsert(
-        {
-          user_id: subscription.metadata?.user_id,
-          stripe_customer_id: subscription.customer,
-          stripe_subscription_id: subscription.id,
-          stripe_price_id: subscription.items.data[0].price.id,
-          status: subscription.status,
-          current_period_start: safeDate(subscription.current_period_start),
-          current_period_end: safeDate(subscription.current_period_end),
-          trial_start: safeDate(subscription.trial_start),
-          trial_end: safeDate(subscription.trial_end),
-          cancel_at: safeDate(subscription.cancel_at),
-          canceled_at: safeDate(subscription.canceled_at),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      );
-
-      if (error) {
-        console.error("❌ Erro ao salvar subscrição (update):", error);
-      } else {
-        console.log("✅ Subscrição atualizada:", subscription.id);
+      } catch (err) {
+        console.error("❌ Erro ao processar subscription event:", err.message);
       }
     }
 
