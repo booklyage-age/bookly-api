@@ -1,8 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import Stripe from "stripe";
-import bodyParser from "body-parser";
 import { createClient } from "@supabase/supabase-js";
+import bodyParser from "body-parser";
 
 dotenv.config();
 const app = express();
@@ -16,25 +16,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// ✅ Middleware para processar JSON (todas as rotas EXCETO webhook)
-app.use(
-  express.json({
-    verify: (req, res, buf) => {
-      // 👉 Guarda o rawBody para o webhook da Stripe
-      if (req.originalUrl.startsWith("/webhook")) {
-        req.rawBody = buf.toString();
-      }
-    },
-  })
-);
-
-// 🔹 função auxiliar para datas
 const safeDate = (ts) => (ts ? new Date(ts * 1000).toISOString() : null);
 
 // 🚀 rota de teste
 app.get("/", (req, res) => {
   res.send("🚀 API Stripe + Supabase no ar!");
 });
+
+// ✅ Middleware para JSON (rotas normais)
+app.use(express.json());
 
 // 🔹 Criar sessão de checkout (com trial de 14 dias)
 app.post("/api/create-checkout-session", async (req, res) => {
@@ -71,7 +61,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
   }
 });
 
-// 🔹 Webhook da Stripe (usa o raw body!)
+// ⚡ Webhook da Stripe
 app.post(
   "/webhook",
   bodyParser.raw({ type: "application/json" }),
@@ -120,10 +110,7 @@ app.post(
         if (error) {
           console.error("❌ Erro ao salvar subscrição (checkout):", error);
         } else {
-          console.log(
-            "✅ Subscrição criada/atualizada via checkout:",
-            subscription.id
-          );
+          console.log("✅ Subscrição criada/atualizada via checkout:", subscription.id);
         }
       }
     }
