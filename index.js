@@ -50,14 +50,36 @@ app.post("/api/create-checkout-session", async (req, res) => {
       },
       customer_email: email,
       metadata: { user_id },
-      success_url: `${process.env.DOMAIN}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.DOMAIN}/cancel`,
+      // ✅ agora vai ao login depois do checkout
+      success_url: `https://booklypt.site/login?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://booklypt.site/cancel`,
       allow_promotion_codes: true,
     });
 
     res.json({ url: session.url });
   } catch (err) {
     console.error("❌ Erro ao criar Checkout Session:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 🔹 Criar sessão do Customer Portal
+app.post("/api/create-portal-session", express.json(), async (req, res) => {
+  try {
+    const { customerId } = req.body; // vem do Supabase ou da sessão do utilizador
+
+    if (!customerId) {
+      return res.status(400).json({ error: "customerId é obrigatório" });
+    }
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: "https://booklypt.site/dashboard", // volta para a dashboard depois
+    });
+
+    res.json({ url: portalSession.url });
+  } catch (err) {
+    console.error("❌ Erro ao criar Portal Session:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -91,7 +113,7 @@ app.post(
             session.subscription
           );
 
-          // 🔹 salvar apenas dados básicos (sem periodos, que ainda estão NULL)
+          // 🔹 salvar apenas dados básicos
           const { error } = await supabase.from("subscriptions").upsert(
             {
               user_id: session.metadata.user_id || subscription.metadata?.user_id,
