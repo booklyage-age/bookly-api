@@ -66,6 +66,9 @@ app.post("/api/create-checkout-session", async (req, res) => {
 // 🔹 Criar sessão do Customer Portal
 app.post("/api/create-portal-session", express.json(), async (req, res) => {
   try {
+
+    console.log("DOMAIN:",
+      process.env.DOMAIN);
     const { customerId } = req.body; // vem do Supabase ou da sessão do utilizador
 
     if (!customerId) {
