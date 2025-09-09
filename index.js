@@ -74,7 +74,7 @@ app.post("/api/create-portal-session", express.json(), async (req, res) => {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: "https://booklypt.site/dashboard?tab=settings", // volta para a dashboard depois
+      return_url: "https://booklypt.site/dashboard", // volta para a dashboard depois
     });
 
     res.json({ url: portalSession.url });
