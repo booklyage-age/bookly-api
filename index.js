@@ -52,7 +52,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
       metadata: { user_id },
       // ✅ agora vai ao login depois do checkout
       success_url: `${process.env.DOMAIN}/login?session_id={CHECKOUT_SESSION_ID}`, 
-      cancel_url: `${process.env.DOMAIN}/subscribe`,
+      cancel_url: `https://booklypt.site/subscribe`,
       allow_promotion_codes: true,
     });
 
@@ -67,8 +67,6 @@ app.post("/api/create-checkout-session", async (req, res) => {
 app.post("/api/create-portal-session", express.json(), async (req, res) => {
   try {
 
-    console.log("DOMAIN:",
-      process.env.DOMAIN);
     const { customerId } = req.body; // vem do Supabase ou da sessão do utilizador
 
     if (!customerId) {
@@ -77,7 +75,7 @@ app.post("/api/create-portal-session", express.json(), async (req, res) => {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${process.env.DOMAIN}/dashboard`, // volta para a dashboard depois
+      return_url: `https://booklypt.site/dashboard`, // volta para a dashboard depois
     });
 
     res.json({ url: portalSession.url });
