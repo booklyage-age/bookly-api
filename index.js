@@ -52,7 +52,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
       metadata: { user_id },
       // ✅ agora vai ao login depois do checkout
       success_url: `https://booklypt.site/login?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://booklypt.site/cancel`,
+      cancel_url: `https://booklypt.site/subscribe`,
       allow_promotion_codes: true,
     });
 
@@ -74,7 +74,7 @@ app.post("/api/create-portal-session", express.json(), async (req, res) => {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: "https://booklypt.site/dashboard", // volta para a dashboard depois
+      return_url: "https://booklypt.site/dashboard?tab=settings", // volta para a dashboard depois
     });
 
     res.json({ url: portalSession.url });
